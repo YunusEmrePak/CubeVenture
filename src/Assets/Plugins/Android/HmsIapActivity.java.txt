@@ -1,0 +1,112 @@
+package com.unity.hms.iap;
+
+import android.app.Activity;
+import android.content.Intent;
+import android.os.Bundle;
+import com.huawei.hms.iap.Iap;
+import com.huawei.hmf.tasks.Task;
+import com.huawei.hms.iap.entity.PurchaseIntentResult;
+import com.huawei.hmf.tasks.OnSuccessListener;
+import com.huawei.hmf.tasks.OnFailureListener;
+import com.huawei.hms.support.api.client.Status;
+import com.huawei.hms.iap.IapApiException;
+import android.content.IntentSender;
+import android.util.Log;
+import com.huawei.hms.iap.entity.PurchaseIntentReq;
+
+public class HmsIapActivity extends Activity {
+
+    private static IIapCallback mCallback;
+    private static String mIntent = "test";
+    private static String mId = "test";
+    private static int mType = 0;
+    private String TAG = "ResolutionForResult: ";
+    public static void setCallback(IIapCallback callback){
+        mCallback=callback;
+    }
+    public static void setIntent(String intent){
+        mIntent=intent;
+    }
+    public static void setConProductId(String id){
+        mId=id;
+    }
+    public static void setPriceType(int type){ mType=type;}
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        switch (mIntent) {
+            case "Consumables":
+                purchase("Consumables");
+                break;
+            case "Non-Consumables":
+                purchase("Non-Consumables");
+                break;
+            case "Subscription":
+                purchase("Subscription");
+                break;
+            default:
+                break;
+        }
+    }
+
+    public static void start(Activity activity){
+        Intent intent = new Intent(activity, HmsIapActivity.class);
+        activity.startActivity(intent);
+    }
+
+    public Activity getActivity() {
+        return this;
+    }
+
+    public void purchase(String type) {
+        PurchaseIntentReq req = new PurchaseIntentReq();
+        if (type == "Consumables"){
+            req.setProductId(mId);
+            req.setPriceType(mType);
+        }else if(type == "Non-Consumables"){
+            req.setProductId(mId);
+            req.setPriceType(mType);
+        }else{
+            req.setProductId(mId);
+            req.setPriceType(mType);
+        }
+        req.setDeveloperPayload("test");
+        final Activity activity = getActivity();
+        Task<PurchaseIntentResult> task = Iap.getIapClient(activity).createPurchaseIntent(req);
+        task.addOnSuccessListener(new OnSuccessListener<PurchaseIntentResult>() {
+            @Override
+            public void onSuccess(PurchaseIntentResult result) {
+                Status status = result.getStatus();
+                if (status.hasResolution()) {
+                    try {
+                        status.startResolutionForResult(activity,6666);
+                    } catch (IntentSender.SendIntentException exp){
+                        Log.e(TAG, exp.getMessage());
+                    }
+                }
+            }
+        }).addOnFailureListener(new OnFailureListener() {
+            @Override
+            public void onFailure(Exception e) {
+                if (e instanceof IapApiException) {
+                    IapApiException apiException = (IapApiException) e;
+                    Status status = apiException.getStatus();
+                    int returnCode = apiException.getStatusCode();
+                    Log.e(TAG, e.getMessage());
+                } else {
+                    Log.e(TAG, e.getMessage());
+                }
+            }
+        });
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if(mCallback!=null){
+            mCallback.onActivityResult(requestCode, resultCode,data);
+        }
+        finish();
+    }
+}
